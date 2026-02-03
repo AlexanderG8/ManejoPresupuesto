@@ -418,5 +418,5 @@ FodyWeavers.xsd
 *.msp
 
 # Connection string file
-.appsettings.json
-.appsettings.Development.json
+appsettings.json
+appsettings.Development.json
