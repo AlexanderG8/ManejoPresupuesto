@@ -420,3 +420,4 @@ FodyWeavers.xsd
 # Connection string file
 appsettings.json
 appsettings.Development.json
+/appsettings.json
