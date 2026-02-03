@@ -1,0 +1,28 @@
+﻿@model TipoCuenta
+
+@{
+	ViewData["Title"] = "Crear Tipo de Cuenta";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<h5>
+	El tipo de cuenta se refiere a cómo podemos agrupar cuentas.
+	Ejemplos: Préstamos, tarjetas de crédito, etc.
+</h5>
+<!--Modo All => Mostrará todos los errores, mientras que el modo ModelOnly, mostrará los errores relacionados con el modelo-->
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<form asp-action="Crear">
+	<div class="mb-3">
+		<label asp-for="Nombre" class="form-label"></label>
+		<input type="text" asp-for="Nombre" class="form-control" />
+		<span asp-validation-for="Nombre" class="text-danger"></span>
+	</div>
+	<button type="submit" class="btn btn-primary">Enviar</button>
+</form>
+
+@section Scripts {
+	<!--Esto es una vista parcial que tiene declarado los scripts de jquery y así poder utilizar la propiedades de validación de Jquery-->
+	<partial name="_ValidationScriptsPartial" />
+}
