@@ -1,10 +1,9 @@
 ﻿@model TipoCuenta
-
 @{
-	ViewData["Title"] = "Crear Tipo de Cuenta";
+	ViewData["Title"] = "Editar Tipo de Cuenta";
 }
 
-<h1>@ViewData["Title"]</h1>
+<h1>@ViewData["Title"] : @Model.Nombre</h1>
 
 <h5>
 	El tipo de cuenta se refiere a cómo podemos agrupar cuentas.
@@ -13,7 +12,8 @@
 <!--Modo All => Mostrará todos los errores, mientras que el modo ModelOnly, mostrará los errores relacionados con el modelo-->
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
-<form asp-action="Crear">
+<form asp-action="Editar">
+	<input type="hidden" asp-for="Id"/>
 	<div class="mb-3">
 		<label asp-for="Nombre" class="form-label"></label>
 		<input type="text" asp-for="Nombre" class="form-control" />
