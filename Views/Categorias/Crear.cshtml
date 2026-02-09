@@ -1,0 +1,27 @@
+﻿@model Categoria
+@{
+	ViewData["Title"] = "Crear Categoría";
+}
+
+<h1>@ViewData["Title"]</h1>
+<h5>
+	La categoría nos permite indicar en qué gastamos nuestro dinero, tambien, de donde provienen nuestro ingreso.
+</h5>
+
+<form asp-action="Crear">
+	<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+	
+	<div class="mb-3">
+		<label asp-for="Nombre" class="form-label"></label>
+		<input asp-for="Nombre" class="form-control"/>
+		<span asp-validation-for="Nombre" class="text-danger"></span>
+	</div>
+
+	<div class="mb-3">
+		<label asp-for="TipoOperacionId" class="form-label"></label>
+		<select asp-for="TipoOperacionId" asp-items="Html.GetEnumSelectList<TipoOperacion>()" class="form-select"></select>
+	</div>
+
+	<button type="submit" class="btn btn-primary">Enviar</button>
+	<a class="btn btn-secondary" asp-action="Index">Cancelar</a>
+</form>
