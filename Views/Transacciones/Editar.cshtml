@@ -1,19 +1,24 @@
 ﻿@using ManejoPresupuesto.Models.View
-@model TransaccionCreacionViewModel
+@model TransaccionActualizacionViewModel
+
 @{
-    ViewData["Title"] = "Crear Transacción";
+	ViewData["Title"] = "Editar Transacción";
 }
+
 
 <h1>@ViewData["Title"]</h1>
 <h5>
     Una transacción te permite indicar tus ingresos y gastos
 </h5>
 
-<form asp-action="Crear">
+<form asp-action="Editar">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Id"/>
+    <input type="hidden" asp-for="MontoAnterior" />
+    <input type="hidden" asp-for="CuentaAnteriorId" />
     <div class="mb-3">
         <label asp-for="FechaTransaccion" class="form-label"></label>
-        <input asp-for="FechaTransaccion" class="form-control"/>
+        <input asp-for="FechaTransaccion" class="form-control" />
         <span asp-validation-for="FechaTransaccion" class="text-danger"></span>
     </div>
     <div class="mb-3">
@@ -42,11 +47,12 @@
         <span asp-validation-for="Nota" class="text-danger"></span>
     </div>
 
-    <button type="submit" class="btn btn-primary">Crear</button>
+    <button class="btn btn-primary">Actualizar</button>
+    <button class="btn btn-danger" asp-action="Borrar">Borrar</button>
     <a asp-action="Index" class="btn btn-secondary">Regresar</a>
 </form>
 
-@section Scripts{
+@section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script src="~/js/FormularioTransacciones.js" asp-append-version="true"></script>
     <script>
