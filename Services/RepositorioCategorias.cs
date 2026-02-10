@@ -8,6 +8,7 @@ namespace ManejoPresupuesto.Services
     {
         Task Crear(Categoria categoria);
         Task<IEnumerable<Categoria>> Obtener(int usuarioId);
+        Task<IEnumerable<Categoria>> Obtener(int usuarioId, TipoOperacion tipoOperacionId);
         Task<Categoria> ObtenerPorId(int id, int usuarioId);
         Task Actualizar(Categoria categoria);
         Task Borrar(int id);
@@ -36,7 +37,16 @@ namespace ManejoPresupuesto.Services
             return await connection.QueryAsync<Categoria>(
                 @"SELECT *
                   FROM Categorias
-                  WHERE UsuarioId = @UsuarioId", new { UsuarioId = usuarioId });
+                  WHERE UsuarioId = @UsuarioId", new { usuarioId });
+        }
+
+        public async Task<IEnumerable<Categoria>> Obtener(int usuarioId, TipoOperacion tipoOperacionId)
+        {
+            using var connection = new SqlConnection(connectionString);
+            return await connection.QueryAsync<Categoria>(
+                @"SELECT *
+                  FROM Categorias
+                  WHERE UsuarioId = @UsuarioId AND TipoOperacionId = @tipoOperacionId", new { usuarioId, tipoOperacionId });
         }
 
         public async Task<Categoria> ObtenerPorId(int id, int usuarioId)
@@ -45,7 +55,7 @@ namespace ManejoPresupuesto.Services
             return await connection.QueryFirstOrDefaultAsync<Categoria>(
                 @"SELECT *
                   FROM Categorias
-                  WHERE Id = @Id AND UsuarioId = @UsuarioId", new { Id = id, UsuarioId = usuarioId });
+                  WHERE Id = @Id AND UsuarioId = @UsuarioId", new { id, usuarioId });
         }
 
         public async Task Actualizar(Categoria categoria)
@@ -61,7 +71,7 @@ namespace ManejoPresupuesto.Services
         {
             using var connection = new SqlConnection(connectionString);
             await connection.ExecuteAsync(
-                @"DELETE FROM Categorias WHERE Id = @Id", new { Id = id });
+                @"DELETE FROM Categorias WHERE Id = @Id", new { id });
         }
     }
 }
