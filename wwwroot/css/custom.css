@@ -10,10 +10,10 @@
 }
 
 .activo {
-    color: blue;
+    color: blue !important;
 }
 
 .pasivo {
-    color: red;
+    color: red !important;
 }
 

@@ -4,6 +4,7 @@ using ManejoPresupuesto.Models.View;
 using ManejoPresupuesto.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Reflection;
 
 namespace ManejoPresupuesto.Controllers
 {
@@ -75,7 +76,7 @@ namespace ManejoPresupuesto.Controllers
             return RedirectToAction("Index");
         }
         [HttpGet]
-        public async Task<IActionResult> Editar(int id)
+        public async Task<IActionResult> Editar(int id, string urlRetorno = null)
         {
             var usuarioId = servicioUsuario.ObtenerUsuarioId();
             var transaccion = await repositorioTransacciones.ObtenerPorID(id, usuarioId);
@@ -96,7 +97,7 @@ namespace ManejoPresupuesto.Controllers
             modelo.CuentaAnteriorId = transaccion.CuentaId;
             modelo.Categorias = await ObtenerCategorias(usuarioId, transaccion.TipoOperacionId);
             modelo.Cuentas = await ObtenerCuentas(usuarioId);
-
+            modelo.UrlRetorno = urlRetorno;
             return View(modelo);
         }
 
@@ -133,11 +134,19 @@ namespace ManejoPresupuesto.Controllers
             }
             // Actualizar la transacción en la base de datos. Se le pasan el monto anterior y el id de la cuenta anterior para que el repositorio pueda ajustar los saldos de las cuentas correctamente en caso de que el usuario haya cambiado el monto
             await repositorioTransacciones.Actualizar(transaccion, modelo.MontoAnterior, modelo.CuentaAnteriorId);
-            return RedirectToAction("Index");
+
+            if (string.IsNullOrEmpty(modelo.UrlRetorno))
+            {
+                return RedirectToAction("Index");
+            }
+            else 
+            {
+                return LocalRedirect(modelo.UrlRetorno);
+            }
         }
 
         [HttpPost]
-        public async Task<IActionResult> Borrar(int id) 
+        public async Task<IActionResult> Borrar(int id, string urlRetorno = null) 
         {
             var usuarioId = servicioUsuario.ObtenerUsuarioId();
             var transaccion = await repositorioTransacciones.ObtenerPorID(id, usuarioId);
@@ -146,7 +155,14 @@ namespace ManejoPresupuesto.Controllers
                 return RedirectToAction("NoEncontrado", "Home");
             }
             await repositorioTransacciones.Borrar(id);
-            return RedirectToAction("Index");
+            if (string.IsNullOrEmpty(urlRetorno))
+            {
+                return RedirectToAction("Index");
+            }
+            else
+            {
+                return LocalRedirect(urlRetorno);
+            }
         }
 
         private async Task<IEnumerable<SelectListItem>> ObtenerCuentas(int usuarioId)

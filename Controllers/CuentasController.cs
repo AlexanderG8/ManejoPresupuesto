@@ -13,13 +13,19 @@ namespace ManejoPresupuesto.Controllers
         private readonly IRepositorioTiposCuentas repositorioTiposCuentas;
         private readonly IServicioUsuario servicioUsuario;
         private readonly IRepositorioCuentas repositorioCuentas;
+        private readonly IRepositorioTransacciones repositorioTransacciones;
         private readonly IMapper mapper;
 
-        public CuentasController(IRepositorioTiposCuentas repositorioTiposCuentas, IServicioUsuario servicioUsuario, IRepositorioCuentas repositorioCuentas, IMapper mapper)
+        public CuentasController(IRepositorioTiposCuentas repositorioTiposCuentas, 
+                                 IServicioUsuario servicioUsuario, 
+                                 IRepositorioCuentas repositorioCuentas, 
+                                 IMapper mapper, 
+                                 IRepositorioTransacciones repositorioTransacciones)
         {
             this.repositorioTiposCuentas = repositorioTiposCuentas;
             this.servicioUsuario = servicioUsuario;
             this.repositorioCuentas = repositorioCuentas;
+            this.repositorioTransacciones = repositorioTransacciones;
             this.mapper = mapper;
         }
 
@@ -144,6 +150,65 @@ namespace ManejoPresupuesto.Controllers
         {
             var tiposCuentas = await repositorioTiposCuentas.Obtener(usuarioId);
             return tiposCuentas.Select(x => new SelectListItem(x.Nombre, x.Id.ToString()));
+        }
+
+        public async Task<IActionResult> Detalle(int id, int mes, int ano) 
+        {
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+            var cuenta = await repositorioCuentas.ObtenerPorId(id, usuarioId);
+            if (cuenta is null)
+            {
+                return RedirectToAction("NoEncontrado", "Home");
+            }
+
+            DateTime FechaInicio;
+            DateTime FechaFin;
+            if (mes <= 0 || mes > 12 || ano <= 1900)
+            {
+                var hoy = DateTime.Today;
+                FechaInicio = new DateTime(hoy.Year, hoy.Month, 1);
+            }
+            else 
+            {
+                FechaInicio = new DateTime(ano, mes, 1);
+            }
+
+            FechaFin = FechaInicio.AddMonths(1).AddDays(-1);
+
+            // Parametros para el procedimiento almacenado
+            var obtenerTransaccionesPorCuenta = new ObtenerTransaccionesPorCuenta() 
+            {
+                CuentaId = id,
+                UsuarioId = usuarioId,
+                FechaInicio = FechaInicio,
+                FechaFin = FechaFin
+            };
+            // Obtengo las transacciones
+            var transacciones = await repositorioTransacciones.ObtenerPorCuentaId(obtenerTransaccionesPorCuenta);
+
+            ViewBag.Cuenta = cuenta.Nombre;
+            // Luego las agrupo por fecha
+            var transaccionesPorFecha = transacciones.OrderByDescending(x => x.FechaTransaccion)
+                                                     .GroupBy(x => x.FechaTransaccion)
+                                                     .Select(grupo => new ReporteTransaccionesDetalladas.TransaccionesPorFecha()
+                                                     {
+                                                         FechaTransaccion = grupo.Key,
+                                                         Transacciones = grupo.AsEnumerable()
+                                                     });
+
+            var modelo = new ReporteTransaccionesDetalladas();
+            modelo.TransaccionesAgrupadas = transaccionesPorFecha;
+            modelo.FechaInicio = FechaInicio;
+            modelo.FechaFin = FechaFin;
+
+            ViewBag.mesAnterior = FechaInicio.AddMonths(-1).Month;
+            ViewBag.anoAnterior = FechaInicio.AddMonths(-1).Year;
+            ViewBag.mesPosterior = FechaInicio.AddMonths(1).Month;
+            ViewBag.anoPosterior = FechaInicio.AddMonths(1).Year;
+            //Obtengo la url donde me encuentro para poder retornar a esa misma página luego de editar o borrar una transacción
+            ViewBag.urlRetorno = HttpContext.Request.Path + HttpContext.Request.QueryString;
+
+            return View(modelo);
         }
     }
 }
