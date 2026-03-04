@@ -13,6 +13,7 @@ namespace ManejoPresupuesto.Services
         Task<IEnumerable<Transaccion>> ObtenerPorCuentaId(ObtenerTransaccionesPorCuenta modelo);
         Task Borrar(int id);
         Task<IEnumerable<Transaccion>> ObtenerPorUsuarioId(ParametroObtenerTransaccionesPorUsuario modelo);
+        Task<IEnumerable<ResultadoObtenerPorSemana>> ObtenerPorSemana(ParametroObtenerTransaccionesPorUsuario modelo);
     }
     public class RepositorioTransacciones : IRepositorioTransacciones
     {
@@ -22,36 +23,42 @@ namespace ManejoPresupuesto.Services
             this.connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
-        public async Task Crear(Transaccion transaccion) 
+        public async Task Crear(Transaccion transaccion)
         {
             using var connection = new SqlConnection(connectionString);
-            var id = await connection.QuerySingleAsync<int>("Transacciones_Insertar", 
-                                                            new {transaccion.UsuarioId, 
-                                                                transaccion.FechaTransaccion, 
-                                                                transaccion.Monto, 
-                                                                transaccion.CategoriaId, 
-                                                                transaccion.CuentaId, 
-                                                                transaccion.Nota}, 
+            var id = await connection.QuerySingleAsync<int>("Transacciones_Insertar",
+                                                            new
+                                                            {
+                                                                transaccion.UsuarioId,
+                                                                transaccion.FechaTransaccion,
+                                                                transaccion.Monto,
+                                                                transaccion.CategoriaId,
+                                                                transaccion.CuentaId,
+                                                                transaccion.Nota
+                                                            },
                                                             commandType: System.Data.CommandType.StoredProcedure);
             transaccion.Id = id;
         }
 
-        public async Task Actualizar(Transaccion transaccion, decimal montoAnterior, int cuentaAnteriorId) 
+        public async Task Actualizar(Transaccion transaccion, decimal montoAnterior, int cuentaAnteriorId)
         {
             using var connection = new SqlConnection(connectionString);
-            await connection.ExecuteAsync("Transacciones_Actualizar", 
-                                                            new {transaccion.Id, 
-                                                                transaccion.FechaTransaccion, 
-                                                                transaccion.Monto, 
+            await connection.ExecuteAsync("Transacciones_Actualizar",
+                                                            new
+                                                            {
+                                                                transaccion.Id,
+                                                                transaccion.FechaTransaccion,
+                                                                transaccion.Monto,
                                                                 montoAnterior,
                                                                 transaccion.CuentaId,
                                                                 cuentaAnteriorId,
-                                                                transaccion.CategoriaId, 
-                                                                transaccion.Nota}, 
+                                                                transaccion.CategoriaId,
+                                                                transaccion.Nota
+                                                            },
                                                             commandType: System.Data.CommandType.StoredProcedure);
         }
 
-        public async Task<IEnumerable<Transaccion>> ObtenerPorCuentaId(ObtenerTransaccionesPorCuenta modelo) 
+        public async Task<IEnumerable<Transaccion>> ObtenerPorCuentaId(ObtenerTransaccionesPorCuenta modelo)
         {
             using var connection = new SqlConnection(connectionString);
             return await connection.QueryAsync<Transaccion>(@"SELECT t.Id, t.Monto, t.FechaTransaccion, c.Nombre as Categoria,cu.Nombre as Cuenta, c.TipoOperacionId
@@ -74,20 +81,33 @@ namespace ManejoPresupuesto.Services
                                                               ORDER BY t.FechaTransaccion DESC", modelo);
         }
 
-        public async Task<Transaccion> ObtenerPorID(int id, int usuarioId) 
+        public async Task<Transaccion> ObtenerPorID(int id, int usuarioId)
         {
             using var connection = new SqlConnection(connectionString);
             return await connection.QueryFirstOrDefaultAsync<Transaccion>(@"SELECT tra.*, cat.TipoOperacionId 
                                                                             FROM Transacciones tra
                                                                             INNER JOIN Categorias cat ON cat.Id = tra.CategoriaId
-                                                                            WHERE tra.Id = @Id and tra.UsuarioId = @UsuarioId", new { id, usuarioId});
+                                                                            WHERE tra.Id = @Id and tra.UsuarioId = @UsuarioId", new { id, usuarioId });
         }
 
 
-        public async Task Borrar(int id) 
+        public async Task Borrar(int id)
         {
             using var connection = new SqlConnection(connectionString);
             await connection.ExecuteAsync("Transacciones_Borrar", new { id }, commandType: CommandType.StoredProcedure);
+        }
+
+        public async Task<IEnumerable<ResultadoObtenerPorSemana>> ObtenerPorSemana(ParametroObtenerTransaccionesPorUsuario modelo)
+        {
+            using var connection = new SqlConnection(connectionString);
+            return await connection.QueryAsync<ResultadoObtenerPorSemana>(@"select datediff(d, @fechaInicio, FechaTransaccion) / 7 + 1 as Semana,
+                                                                            sum(Monto) as Monto,
+                                                                            c.TipoOperacionId
+                                                                            from Transacciones t
+                                                                            inner join Categorias c on c.Id = t.CategoriaId
+                                                                            where t.UsuarioId = @usuarioId 
+                                                                            and FechaTransaccion between @fechaInicio and @fechaFin
+                                                                            group by datediff(d, @fechaInicio, FechaTransaccion) / 7, c.TipoOperacionId", modelo);
         }
     }
 }

@@ -40,6 +40,78 @@ namespace ManejoPresupuesto.Controllers
             return View(modelo);
         }
 
+        public async Task<IActionResult> Semanal(int mes, int ano) 
+        {
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+            IEnumerable<ResultadoObtenerPorSemana> transaccionesPorSemana = await servicioReportes.ObtenerReporteSemanal(usuarioId, mes, ano, ViewBag);
+
+            var agrupado = transaccionesPorSemana.GroupBy(x => x.Semana).Select(x =>
+            new ResultadoObtenerPorSemana()
+            {
+                Semana = x.Key,
+                Ingresos = x.Where(x => x.TipoOperacionId == TipoOperacion.Ingreso).Select(x => x.Monto).FirstOrDefault(),
+                Gastos = x.Where(x => x.TipoOperacionId == TipoOperacion.Gasto).Select(x => x.Monto).FirstOrDefault()
+            }).ToList();
+
+            if (ano == 0 || mes == 0) 
+            {
+                var hoy = DateTime.Today;
+                ano = hoy.Year;
+                mes = hoy.Month;
+            }
+
+            var fechaReferencia = new DateTime(ano, mes, 1);
+            // Obtener el número de días del mes para poder segmentar las semanas correctamente. Se obtiene el último día del mes restando un día al primer día del siguiente mes.
+            var diasDelMes = Enumerable.Range(1, fechaReferencia.AddMonths(1).AddDays(-1).Day);
+            // Segmentar los días del mes en grupos de 7 para representar las semanas. Esto es útil para mostrar el reporte semanal con los días correspondientes a cada semana.
+            // El metodo chunk es una extensión de Linq que permite segmentar una colección en grupos de un tamaño específico.
+            // En este caso, se segmentan los días del mes en grupos de 7 para representar las semanas.
+            var diasSegmentados = diasDelMes.Chunk(7).ToList();
+
+            for (int i = 0; i < diasSegmentados.Count; i++)
+            {
+                var semana = i + 1;
+                var fechaInicio = new DateTime(ano, mes, diasSegmentados[i].First());
+                var fechaFin = new DateTime(ano, mes, diasSegmentados[i].Last());
+                var grupoSemana = agrupado.FirstOrDefault(x => x.Semana == semana);
+
+                if (grupoSemana is null)
+                {
+                    agrupado.Add(new ResultadoObtenerPorSemana
+                    {
+                        Semana = semana,
+                        FechaInicio = fechaInicio,
+                        FechaFin = fechaFin
+                    });
+                }
+                else 
+                {
+                    grupoSemana.FechaInicio = fechaInicio;
+                    grupoSemana.FechaFin = fechaFin;
+                }
+            }
+
+            agrupado = agrupado.OrderByDescending(x => x.Semana).ToList();
+
+            var modelo = new ReporteSemanalViewModel();
+            modelo.TransaccionesPorSemana = agrupado;
+            modelo.FechaReferencia = fechaReferencia;
+
+            return View(modelo);
+        }
+        public IActionResult Mensual()
+        {
+            return View();
+        }
+        public IActionResult ExcelReporte()
+        {
+            return View();
+        }
+        public IActionResult Calendario()
+        {
+            return View();
+        }
+
         public async Task<IActionResult> Crear()
         {
             var usuarioId = servicioUsuario.ObtenerUsuarioId();
