@@ -14,6 +14,7 @@ namespace ManejoPresupuesto.Services
         Task Borrar(int id);
         Task<IEnumerable<Transaccion>> ObtenerPorUsuarioId(ParametroObtenerTransaccionesPorUsuario modelo);
         Task<IEnumerable<ResultadoObtenerPorSemana>> ObtenerPorSemana(ParametroObtenerTransaccionesPorUsuario modelo);
+        Task<IEnumerable<ResultadoObtenerPorMes>> ObtenerPorMes(int usuarioId, int ano);
     }
     public class RepositorioTransacciones : IRepositorioTransacciones
     {
@@ -72,7 +73,7 @@ namespace ManejoPresupuesto.Services
         public async Task<IEnumerable<Transaccion>> ObtenerPorUsuarioId(ParametroObtenerTransaccionesPorUsuario modelo)
         {
             using var connection = new SqlConnection(connectionString);
-            return await connection.QueryAsync<Transaccion>(@"SELECT t.Id, t.Monto, t.FechaTransaccion, c.Nombre as Categoria,cu.Nombre as Cuenta, c.TipoOperacionId
+            return await connection.QueryAsync<Transaccion>(@"SELECT t.Id, t.Monto, t.FechaTransaccion, c.Nombre as Categoria,cu.Nombre as Cuenta, c.TipoOperacionId, t.Nota
                                                               FROM Transacciones t
                                                               INNER JOIN Categorias c ON c.Id = t.CategoriaId
                                                               INNER JOIN Cuentas cu ON cu.Id = t.CuentaId
@@ -108,6 +109,16 @@ namespace ManejoPresupuesto.Services
                                                                             where t.UsuarioId = @usuarioId 
                                                                             and FechaTransaccion between @fechaInicio and @fechaFin
                                                                             group by datediff(d, @fechaInicio, FechaTransaccion) / 7, c.TipoOperacionId", modelo);
+        }
+
+        public async Task<IEnumerable<ResultadoObtenerPorMes>> ObtenerPorMes(int usuarioId, int ano)
+        {
+            using var connection = new SqlConnection(connectionString);
+            return await connection.QueryAsync<ResultadoObtenerPorMes>(@"SELECT MONTH(T.FechaTransaccion) AS Mes, 
+                                                                         SUM(T.Monto) AS Monto, C.TipoOperacionId FROM Transacciones T
+                                                                         INNER JOIN Categorias C ON C.Id = T.CategoriaId
+                                                                         WHERE T.UsuarioId = @usuarioId AND YEAR(T.FechaTransaccion) = @ano
+                                                                         GROUP BY MONTH(t.FechaTransaccion), C.TipoOperacionId", new { usuarioId, ano});
         }
     }
 }

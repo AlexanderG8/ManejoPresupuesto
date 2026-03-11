@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
+using ClosedXML.Excel;
 using ManejoPresupuesto.Models;
 using ManejoPresupuesto.Models.View;
 using ManejoPresupuesto.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using System.Data;
 using System.Reflection;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
@@ -99,14 +101,155 @@ namespace ManejoPresupuesto.Controllers
 
             return View(modelo);
         }
-        public IActionResult Mensual()
+        public async Task<IActionResult> Mensual(int ano)
         {
-            return View();
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+            if (ano == 0) 
+            {
+                ano = DateTime.Today.Year;
+            }
+
+            var transaccionesPorMes = await repositorioTransacciones.ObtenerPorMes(usuarioId, ano);
+
+            var transaccionesAgrupadas = transaccionesPorMes.GroupBy(x => x.Mes).Select(x => new ResultadoObtenerPorMes()
+            {
+                Mes = x.Key,
+                Ingreso = x.Where(x => x.TipoOperacionId == TipoOperacion.Ingreso).Select(x => x.Monto).FirstOrDefault(),
+                Gasto = x.Where(x => x.TipoOperacionId == TipoOperacion.Gasto).Select(x => x.Monto).FirstOrDefault(),
+            }).ToList();
+
+            for (int mes = 1; mes <= 12; mes++) 
+            {
+                var transaccion = transaccionesAgrupadas.FirstOrDefault(x => x.Mes == mes);
+                var fechaReferencia = new DateTime(ano, mes, 1);
+
+                if (transaccion is null) 
+                {
+                    transaccionesAgrupadas.Add(new ResultadoObtenerPorMes 
+                    {
+                        Mes = mes,
+                        FechaReferencia = fechaReferencia
+                    });
+                }
+                else
+                {
+                    transaccion.FechaReferencia = fechaReferencia;
+                }
+            }
+
+            transaccionesAgrupadas = transaccionesAgrupadas.OrderByDescending(x => x.Mes).ToList();
+
+            var modelo = new ReporteMensualViewModel();
+            modelo.Ano = ano;
+            modelo.TransaccionesPorMes = transaccionesAgrupadas;
+
+            return View(modelo);
         }
         public IActionResult ExcelReporte()
         {
             return View();
         }
+
+        [HttpGet]
+        public async Task<FileResult> ExportarExcelPorMes(int mes, int ano) 
+        {
+            var fechaInicio = new DateTime(ano, mes, 1);
+            var fechaFin = fechaInicio.AddMonths(1).AddDays(-1);
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+
+            var transacciones = await repositorioTransacciones.ObtenerPorUsuarioId(new ParametroObtenerTransaccionesPorUsuario
+            {
+                UsuarioId = usuarioId,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin
+            });
+
+            var nombreArchivo = $"Manejo Presupuesto - {fechaInicio.ToString("MMMM yyyy")}.xlsx";
+
+            return GenerarExcel(nombreArchivo, transacciones);
+        }
+
+        [HttpGet]
+        public async Task<FileResult> ExportarExcelPorAno(int ano)
+        {
+            var fechaInicio = new DateTime(ano, 1, 1);
+            var fechaFin = fechaInicio.AddYears(1).AddDays(-1);
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+
+            var transacciones = await repositorioTransacciones.ObtenerPorUsuarioId(new ParametroObtenerTransaccionesPorUsuario
+            {
+                UsuarioId = usuarioId,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin
+            });
+
+            var nombreArchivo = $"Manejo Presupuesto - {fechaInicio.ToString("yyyy")}.xlsx";
+
+            return GenerarExcel(nombreArchivo, transacciones);
+        }
+
+        [HttpGet]
+        public async Task<FileResult> ExportarExcelTodo()
+        {
+            var fechaInicio = DateTime.Today.AddYears(-100);
+            var fechaFin = DateTime.Today.AddYears(1000);
+            var usuarioId = servicioUsuario.ObtenerUsuarioId();
+
+            var transacciones = await repositorioTransacciones.ObtenerPorUsuarioId(new ParametroObtenerTransaccionesPorUsuario
+            {
+                UsuarioId = usuarioId,
+                FechaInicio = fechaInicio,
+                FechaFin = fechaFin
+            });
+
+            var nombreArchivo = $"Manejo Presupuesto - {DateTime.Today.ToString("dd-MM-yyyy")}.xlsx";
+
+            return GenerarExcel(nombreArchivo, transacciones);
+        }
+
+        private FileResult GenerarExcel(string nombreArchivo, IEnumerable<Transaccion> transacciones) 
+        {
+            // Creamos un DataTable para almacenar las transacciones que se exportarán a Excel.
+            // El DataTable es una estructura de datos en memoria que representa una tabla con filas y columnas,
+            // similar a una hoja de cálculo de Excel. Se le asigna el nombre "Transacciones" y
+            // se definen las columnas que se incluirán en el reporte: Fecha, Cuenta, Categoria, Nota, Monto e Ingreso/Gasto.
+            DataTable dataTable = new DataTable("Transacciones");
+            dataTable.Columns.AddRange(new DataColumn[] 
+            {
+                new DataColumn("Fecha"),
+                new DataColumn("Cuenta"),
+                new DataColumn("Categoria"),
+                new DataColumn("Nota"),
+                new DataColumn("Monto"),
+                new DataColumn("Ingreso/Gasto")
+            });
+            // Se recorren las transacciones obtenidas de la base de datos y se agregan al DataTable como filas.
+            // Cada fila representa una transacción con sus respectivas columnas.
+            foreach (var transaccion in transacciones) 
+            {
+                dataTable.Rows.Add(transaccion.FechaTransaccion,
+                    transaccion.Cuenta,
+                    transaccion.Categoria,
+                    transaccion.Nota,
+                    transaccion.Monto,
+                    transaccion.TipoOperacionId);
+            }
+            // Se utiliza la biblioteca ClosedXML para generar el archivo Excel a partir del DataTable.
+            using (XLWorkbook wb = new XLWorkbook()) 
+            {
+                // Se agrega el DataTable como una nueva hoja de cálculo en el libro de Excel.
+                wb.Worksheets.Add(dataTable);
+                // Se guarda el libro de Excel en un MemoryStream para luego convertirlo a un arreglo de bytes que se retornará como un archivo descargable.
+                using (MemoryStream stream = new MemoryStream()) 
+                {
+                    // Se guarda el libro de Excel en el MemoryStream.
+                    wb.SaveAs(stream);
+                    // Se retorna el archivo Excel como un FileResult, especificando el tipo de contenido y el nombre del archivo.
+                    return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombreArchivo);
+                }
+            }
+        }
+
         public IActionResult Calendario()
         {
             return View();
