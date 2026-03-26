@@ -26,7 +26,7 @@ namespace ManejoPresupuesto.Services
                   VALUES (@Email, @EmailNormalizado, @PasswordHash);
                   SELECT SCOPE_IDENTITY();", usuario);
 
-            await connection.ExecuteAsync("CrearDatosUsuarioNuevo", new { id }, commandType: System.Data.CommandType.StoredProcedure);
+            await connection.ExecuteAsync("CrearDatosUsuarioNuevo", new { UsuarioId = id }, commandType: System.Data.CommandType.StoredProcedure);
 
             return id;
         }
