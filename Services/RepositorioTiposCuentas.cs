@@ -7,7 +7,7 @@ namespace ManejoPresupuesto.Services
     public interface IRepositorioTiposCuentas
     {
         Task Crear(TipoCuenta tipoCuenta);
-        Task<bool> Existe (string nombre, int usuarioId);
+        Task<bool> Existe (string nombre, int usuarioId, int id = 0);
         Task<IEnumerable<TipoCuenta>> Obtener(int usuarioId);
         Task Actualizar(TipoCuenta tipoCuenta);
         Task<TipoCuenta> ObtenerPorId(int id, int usuarioId);
@@ -37,13 +37,13 @@ namespace ManejoPresupuesto.Services
             tipoCuenta.Id = id;
         }
 
-        public async Task<bool> Existe(string nombre, int usuarioId)
+        public async Task<bool> Existe(string nombre, int usuarioId, int id = 0)
         {
             using var connection = new SqlConnection(connectionString);
             /*QueryFirstOrDefaultAsync => Permite hacer una consulta y me traer el primer resultado o el resultado por default*/
             var existe = await connection.QueryFirstOrDefaultAsync<int>(
-                @"SELECT 1 FROM TiposCuentas WHERE Nombre = @Nombre AND UsuarioId = @UsuarioId;",
-                new { nombre, usuarioId });
+                @"SELECT 1 FROM TiposCuentas WHERE Nombre = @Nombre AND UsuarioId = @UsuarioId AND Id <> @id;",
+                new { nombre, usuarioId, id});
             /*Si existe retornará 1 entonces sera True sino sera False*/
             return existe == 1;
         }

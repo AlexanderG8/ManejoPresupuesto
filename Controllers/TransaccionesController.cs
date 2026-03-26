@@ -430,7 +430,18 @@ namespace ManejoPresupuesto.Controllers
         private async Task<IEnumerable<SelectListItem>> ObtenerCategorias(int usuarioId, TipoOperacion tipoOperacion) 
         {
             var categorias = await repositorioCategorias.Obtener(usuarioId, tipoOperacion);
-            return categorias.Select(x => new SelectListItem(x.Nombre, x.Id.ToString()));
+            // Se crea una lista de SelectListItem a partir de las categorías obtenidas de la base de datos.
+            // Cada SelectListItem representa una categoría con su nombre como texto y su id como valor.
+            // Y con Tolist convierte en una lista para poder agregar un elemento por defecto
+            // al inicio de la lista que permita al usuario seleccionar una categoría.
+            var resultado = categorias.Select(x => new SelectListItem(x.Nombre, x.Id.ToString())).ToList();
+            // Se crea un SelectListItem que representa la opción por defecto para seleccionar una categoría.
+            // Esta opción tiene el texto "-- Seleccionar Categoría --", un valor de "0" y se marca como seleccionada por defecto.
+            var opcionPorDefecto = new SelectListItem("-- Selecionar Categoría --", "0", true);
+            // Se inserta la opción por defecto al inicio de la lista de categorías para
+            // que sea la primera opción que el usuario vea al desplegar el menú de selección de categorías.
+            resultado.Insert(0,opcionPorDefecto);
+            return resultado;
         }
 
         [HttpPost]
