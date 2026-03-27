@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Presentation;
 using ManejoPresupuesto.Models;
 using ManejoPresupuesto.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +40,8 @@ builder.Services.AddIdentityCore<Usuario>(opciones =>
     // RequireNonAlphanumeric: Indica si se requiere al menos un carácter no alfanumérico (como símbolos) en la contraseña.
     opciones.Password.RequireNonAlphanumeric = false;
 
-}).AddErrorDescriber<MensajesDeErrorIdentity>();
+}).AddErrorDescriber<MensajesDeErrorIdentity>()
+.AddDefaultTokenProviders(); // Esto permitirá generar tokens para funcionalidades como restablecimiento de contraseña, confirmación de correo electrónico, etc.
 
 // Configuración de autenticación utilizando cookies
 builder.Services.AddAuthentication(options => 
@@ -51,6 +53,9 @@ builder.Services.AddAuthentication(options =>
 {
     opciones.LoginPath = "/Usuarios/Login";
 });
+
+// Agregamos servicio de envío de correos electrónicos.
+builder.Services.AddTransient<IServicioEmail, ServicioEmail>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 

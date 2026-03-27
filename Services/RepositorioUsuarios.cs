@@ -8,6 +8,7 @@ namespace ManejoPresupuesto.Services
     {
         Task<int> CrearUsuario(Usuario usuario);
         Task<Usuario> BuscarUsuarioPorEmail(string emailNormalizado);
+        Task Actualizar(Usuario usuario);
     }
     public class RepositorioUsuarios : IRepositorioUsuarios
     {
@@ -37,6 +38,15 @@ namespace ManejoPresupuesto.Services
             return await connection.QueryFirstOrDefaultAsync<Usuario>(
                 "SELECT * FROM Usuarios WHERE EmailNormalizado = @EmailNormalizado", 
                 new { EmailNormalizado = emailNormalizado });
+        }
+
+        public async Task Actualizar(Usuario usuario) 
+        {
+            using var connection = new SqlConnection(connectionString);
+            await connection.ExecuteAsync(@"
+            UPDATE Usuarios
+            SET PasswordHash = @PasswordHash
+            WHERE Id = @Id", usuario);
         }
     }
 }
